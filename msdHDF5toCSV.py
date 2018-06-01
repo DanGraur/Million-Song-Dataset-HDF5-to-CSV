@@ -18,8 +18,8 @@ Thierry Bertin-Mahieux (2010) at Columbia University
 
 Credit:
 This HDF5 to CSV code makes use of the following example code provided
-at the Million Song Dataset website 
-(Home>Tutorial/Iterate Over All Songs, 
+at the Million Song Dataset website
+(Home>Tutorial/Iterate Over All Songs,
 http://labrosa.ee.columbia.edu/millionsong/pages/iterate-over-all-songs),
 Which gives users the following code to get all song titles:
 
@@ -161,11 +161,16 @@ def writeheader(write_file, scv_row_string, sep=','):
     write_file.write(scv_row_string + "\n")
 
 
+def parse_nested_list(lst):
+    lst = list(lst)
+    return [list(x) for x in lst]
+
+
 if __name__ == '__main__':
     # Default values for these
     output_dir = './out'
     base_dir = '.'
-    base_file_name = 'SongCSV{0}.csv'
+    base_file_name = 'SongCSV_aux{0}.csv'
 
     sep = ';'
 
@@ -190,27 +195,27 @@ if __name__ == '__main__':
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # csvHeaderString = (
-    #     "SongID;albumName;albumID;artistID;artistLatitude;artistLocation;artistLongitude;artistFamiliarity;"
-    #     "artistHotttnesss;artistmbid;artistPlaymeid;artist7digitalid;artistTerms;artistTermsCount;artistTermsFreq;"
-    #     "artistTermsWeight; artistMBTags;artistMBTagsOuterCount;artistMBTagsCount;analysisSampleRate;audioMD5;endOfFadeIn;"
-    #     "startOfFadeOut;energy;release;release7digitalid;songHotness;track7digitalid;similarartists;similarArtistsCount;"
-    #     "loudness;mode;modeConfidence;artistName;danceability;duration;keySignature;keySignatureConfidence;tempo;"
-    #     "timeSignature;timeSignatureConfidence;title;year;trackID;segmentsStart;segmentsCount;segmentsConfidence;"
-    #     "segmentsPitches;segmentsTimbre;segmentsLoudnessMax;segmentsLoudnessMaxTime;segmentsLoudnessStart;sectionStarts;"
-    #     "sectionCount;sectionsConfidence;beatsStart;beatsCount;beatsConfidence;barsStart;barsCount;barsConfidence;"
-    #     "tatumsStart;tatumsCount;tatumsConfidence"
-    # )
     csvHeaderString = (
         "SongID;albumName;albumID;artistID;artistLatitude;artistLocation;artistLongitude;artistFamiliarity;"
-        "artistHotttnesss;artistmbid;artistPlaymeid;artist7digitalid;artistTermsCount;"
-        "artistMBTagsOuterCount;analysisSampleRate;audioMD5;endOfFadeIn;"
-        "startOfFadeOut;energy;release;release7digitalid;songHotness;track7digitalid;similarArtistsCount;"
+        "artistHotttnesss;artistmbid;artistPlaymeid;artist7digitalid;artistTerms;artistTermsCount;artistTermsFreq;"
+        "artistTermsWeight; artistMBTags;artistMBTagsOuterCount;artistMBTagsCount;analysisSampleRate;audioMD5;endOfFadeIn;"
+        "startOfFadeOut;energy;release;release7digitalid;songHotness;track7digitalid;similarartists;similarArtistsCount;"
         "loudness;mode;modeConfidence;artistName;danceability;duration;keySignature;keySignatureConfidence;tempo;"
-        "timeSignature;timeSignatureConfidence;title;year;trackID;segmentsCount;"
-        "sectionCount;beatsCount;barsCount;"
-        "tatumsCount"
+        "timeSignature;timeSignatureConfidence;title;year;trackID;segmentsStart;segmentsCount;segmentsConfidence;"
+        "segmentsPitches;segmentsTimbre;segmentsLoudnessMax;segmentsLoudnessMaxTime;segmentsLoudnessStart;sectionStarts;"
+        "sectionCount;sectionsConfidence;beatsStart;beatsCount;beatsConfidence;barsStart;barsCount;barsConfidence;"
+        "tatumsStart;tatumsCount;tatumsConfidence"
     )
+    # csvHeaderString = (
+    #     "SongID;albumName;albumID;artistID;artistLatitude;artistLocation;artistLongitude;artistFamiliarity;"
+    #     "artistHotttnesss;artistmbid;artistPlaymeid;artist7digitalid;artistTermsCount;"
+    #     "artistMBTagsOuterCount;analysisSampleRate;audioMD5;endOfFadeIn;"
+    #     "startOfFadeOut;energy;release;release7digitalid;songHotness;track7digitalid;similarArtistsCount;"
+    #     "loudness;mode;modeConfidence;artistName;danceability;duration;keySignature;keySignatureConfidence;tempo;"
+    #     "timeSignature;timeSignatureConfidence;title;year;trackID;segmentsCount;"
+    #     "sectionCount;beatsCount;barsCount;"
+    #     "tatumsCount"
+    # )
 
     # csvAttributeList = re.split('\W+', csvHeaderString)
     # for i, v in enumerate(csvAttributeList):
@@ -306,12 +311,20 @@ if __name__ == '__main__':
             temp = hdf5_getters.get_segments_start(songH5File)
             song.segmentsStart = remove_trap_characters(str(list(temp)))
             song.segmentsCount = get_list_length(temp)
-            song.segmentsConfidence = remove_trap_characters(str(list(hdf5_getters.get_segments_confidence(songH5File))))
-            song.segmentsPitches = remove_trap_characters(str(list(hdf5_getters.get_segments_pitches(songH5File))))
-            song.segmentsTimbre = remove_trap_characters(str(list(hdf5_getters.get_segments_timbre(songH5File))))
-            song.segmentsLoudnessMax = remove_trap_characters(str(list(hdf5_getters.get_segments_loudness_max(songH5File))))
-            song.segmentsLoudnessMaxTime = remove_trap_characters(str(list(hdf5_getters.get_segments_loudness_max_time(songH5File))))
-            song.segmentsLoudnessStart = remove_trap_characters(str(list(hdf5_getters.get_segments_loudness_start(songH5File))))
+            song.segmentsConfidence = \
+                remove_trap_characters(str(list(hdf5_getters.get_segments_confidence(songH5File))))
+            # song.segmentsPitches = remove_trap_characters(str(list(hdf5_getters.get_segments_pitches(songH5File))))
+            song.segmentsPitches = \
+                remove_trap_characters(str(parse_nested_list(hdf5_getters.get_segments_pitches(songH5File))))
+            # song.segmentsTimbre = remove_trap_characters(str(list(hdf5_getters.get_segments_timbre(songH5File))))
+            song.segmentsTimbre = \
+                remove_trap_characters(str(parse_nested_list(hdf5_getters.get_segments_timbre(songH5File))))
+            song.segmentsLoudnessMax = \
+                remove_trap_characters(str(list(hdf5_getters.get_segments_loudness_max(songH5File))))
+            song.segmentsLoudnessMaxTime = \
+                remove_trap_characters(str(list(hdf5_getters.get_segments_loudness_max_time(songH5File))))
+            song.segmentsLoudnessStart = \
+                remove_trap_characters(str(list(hdf5_getters.get_segments_loudness_start(songH5File))))
 
             temp = hdf5_getters.get_sections_start(songH5File)
             song.sectionStarts = remove_trap_characters(str(list(temp)))
