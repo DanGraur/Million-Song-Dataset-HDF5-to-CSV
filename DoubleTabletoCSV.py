@@ -69,8 +69,8 @@ if __name__ == '__main__':
     cluster = Cluster(['127.0.0.1'])
     session = cluster.connect()
 
-    ADD_ROW_PREPARED = """
-        INSERT INTO million_song.song_table_full (
+    ADD_ROW_METADATA_PREPARED = """
+        INSERT INTO million_song.song_metadata (
             SongNumber,
             SongID,
             albumName,
@@ -84,13 +84,8 @@ if __name__ == '__main__':
             artistmbid,
             artistPlaymeid,
             artist7digitalid,
-            artistTerms,
             artistTermsCount,
-            artistTermsFreq,
-            artistTermsWeight,
-            artistMBTags,
             artistMBTagsOuterCount,
-            artistMBTagsCount,
             analysisSampleRate,
             audioMD5,
             endOfFadeIn,
@@ -100,7 +95,6 @@ if __name__ == '__main__':
             release7digitalid,
             songHotness,
             track7digitalid,
-            similarartists,
             similarArtistsCount,
             loudness,
             mode,
@@ -116,26 +110,11 @@ if __name__ == '__main__':
             title,
             year,
             trackID,
-            segmentsStart,
             segmentsCount,
-            segmentsConfidence,
-            segmentsPitches,
-            segmentsTimbre,
-            segmentsLoudnessMax,
-            segmentsLoudnessMaxTime,
-            segmentsLoudnessStart,
-            sectionStarts,
             sectionCount,
-            sectionsConfidence,
-            beatsStart,
             beatsCount,
-            beatsConfidence,
-            barsStart,
             barsCount,
-            barsConfidence,
-            tatumsStart,
-            tatumsCount,
-            tatumsConfidence
+            tatumsCount
         ) VALUES (
             ?,
             ?,
@@ -180,6 +159,35 @@ if __name__ == '__main__':
             ?,
             ?,
             ?,
+            ?            
+        )
+    """
+
+    ADD_ROW_LISTS_PREPARED = """
+        INSERT INTO million_song.song_lists (
+            SongNumber,
+            artistTerms,
+            artistTermsFreq,
+            artistTermsWeight,
+            artistMBTags,
+            artistMBTagsCount,
+            similarartists,
+            segmentsStart,
+            segmentsConfidence,
+            segmentsPitches,
+            segmentsTimbre,
+            segmentsLoudnessMax,
+            segmentsLoudnessMaxTime,
+            segmentsLoudnessStart,
+            sectionStarts,
+            sectionsConfidence,
+            beatsStart,
+            beatsConfidence,
+            barsStart,
+            barsConfidence,
+            tatumsStart,
+            tatumsConfidence
+        ) VALUES (
             ?,
             ?,
             ?,
@@ -201,7 +209,7 @@ if __name__ == '__main__':
             ?,
             ?,
             ?,
-            ?
+            ?        
         )
     """
 
@@ -216,15 +224,23 @@ if __name__ == '__main__':
         """
     )
 
+    # The metadata table
     session.execute(
         """
-        DROP TABLE IF EXISTS million_song.song_table_full
+        DROP TABLE IF EXISTS million_song.song_metadata
+        """
+    )
+
+    # The lists table
+    session.execute(
+        """
+        DROP TABLE IF EXISTS million_song.song_lists
         """
     )
 
     session.execute(
         """
-        CREATE TABLE IF NOT EXISTS million_song.song_table_full (
+        CREATE TABLE IF NOT EXISTS million_song.song_metadata (
             SongNumber bigint,
             SongID text,
             albumName text,
@@ -238,13 +254,8 @@ if __name__ == '__main__':
             artistmbid uuid,
             artistPlaymeid bigint,
             artist7digitalid bigint,
-            artistTerms list<text>,
             artistTermsCount float,
-            artistTermsFreq list<double>,
-            artistTermsWeight list<double>,
-            artistMBTags list<text>,
             artistMBTagsOuterCount int,
-            artistMBTagsCount list<float>,
             analysisSampleRate int,
             audioMD5 text,
             endOfFadeIn float,
@@ -254,7 +265,6 @@ if __name__ == '__main__':
             release7digitalid bigint,
             songHotness double,
             track7digitalid bigint,
-            similarartists list<text>,
             similarArtistsCount int,
             loudness float,
             mode int,
@@ -270,8 +280,27 @@ if __name__ == '__main__':
             title text,
             year int,
             trackID text,
-            segmentsStart list<float>,
             segmentsCount int,
+            sectionCount int,
+            beatsCount int,
+            barsCount int,
+            tatumsCount int,
+            PRIMARY KEY (SongNumber)
+        );
+        """
+    )
+
+    session.execute(
+        """
+        CREATE TABLE IF NOT EXISTS million_song.song_lists (
+            SongNumber bigint,
+            artistTerms list<text>,
+            artistTermsFreq list<double>,
+            artistTermsWeight list<double>,
+            artistMBTags list<text>,
+            artistMBTagsCount list<float>,
+            similarartists list<text>,
+            segmentsStart list<float>,
             segmentsConfidence list<float>,
             segmentsPitches list<frozen <list<float>>>,
             segmentsTimbre list<frozen <list<float>>>,
@@ -279,16 +308,12 @@ if __name__ == '__main__':
             segmentsLoudnessMaxTime list<float>,
             segmentsLoudnessStart list<float>,
             sectionStarts list<float>,
-            sectionCount int,
             sectionsConfidence list<float>,
             beatsStart list<float>,
-            beatsCount int,
             beatsConfidence list<float>,
             barsStart list<float>,
-            barsCount int,
             barsConfidence list<float>,
             tatumsStart list<float>,
-            tatumsCount int,
             tatumsConfidence list<float>,
             PRIMARY KEY (SongNumber)
         );
@@ -296,7 +321,8 @@ if __name__ == '__main__':
     )
 
     # The query for inserting a new row in the table
-    prepared_query = session.prepare(ADD_ROW_PREPARED)
+    prepared_query_metadata = session.prepare(ADD_ROW_METADATA_PREPARED)
+    prepared_query_lists = session.prepare(ADD_ROW_LISTS_PREPARED)
 
     # Perform the insertions
 
@@ -377,7 +403,7 @@ if __name__ == '__main__':
 
                                     try:
                                         session.execute(
-                                            prepared_query.bind((
+                                            prepared_query_metadata.bind((
                                                 long(col_vals_dict['SongNumber']),
                                                 col_vals_dict['SongID'],
                                                 col_vals_dict['albumName'],
@@ -391,13 +417,8 @@ if __name__ == '__main__':
                                                 uuid.UUID(col_vals_dict['artistmbid']),
                                                 long(col_vals_dict['artistPlaymeid']),
                                                 long(col_vals_dict['artist7digitalid']),
-                                                col_vals_dict['artistTerms'],
                                                 float(col_vals_dict['artistTermsCount']),
-                                                col_vals_dict['artistTermsFreq'],
-                                                col_vals_dict['artistTermsWeight'],
-                                                col_vals_dict['artistMBTags'],
                                                 int(col_vals_dict['artistMBTagsOuterCount']),
-                                                col_vals_dict['artistMBTagsCount'],
                                                 int(col_vals_dict['analysisSampleRate']),
                                                 col_vals_dict['audioMD5'],
                                                 float(col_vals_dict['endOfFadeIn']),
@@ -407,7 +428,6 @@ if __name__ == '__main__':
                                                 long(col_vals_dict['release7digitalid']),
                                                 float(col_vals_dict['songHotness']),
                                                 long(col_vals_dict['track7digitalid']),
-                                                col_vals_dict['similarartists'],
                                                 int(col_vals_dict['similarArtistsCount']),
                                                 float(col_vals_dict['loudness']),
                                                 int(col_vals_dict['mode']),
@@ -423,8 +443,24 @@ if __name__ == '__main__':
                                                 col_vals_dict['title'],
                                                 int(col_vals_dict['year']),
                                                 col_vals_dict['trackID'],
-                                                col_vals_dict['segmentsStart'],
                                                 int(col_vals_dict['segmentsCount']),
+                                                int(col_vals_dict['sectionCount']),
+                                                int(col_vals_dict['beatsCount']),
+                                                int(col_vals_dict['barsCount']),
+                                                int(col_vals_dict['tatumsCount'])
+                                            ))
+                                        )
+
+                                        session.execute(
+                                            prepared_query_lists.bind((
+                                                long(col_vals_dict['SongNumber']),
+                                                col_vals_dict['artistTerms'],
+                                                col_vals_dict['artistTermsFreq'],
+                                                col_vals_dict['artistTermsWeight'],
+                                                col_vals_dict['artistMBTags'],
+                                                col_vals_dict['artistMBTagsCount'],
+                                                col_vals_dict['similarartists'],
+                                                col_vals_dict['segmentsStart'],
                                                 col_vals_dict['segmentsConfidence'],
                                                 col_vals_dict['segmentsPitches'],
                                                 col_vals_dict['segmentsTimbre'],
@@ -432,17 +468,13 @@ if __name__ == '__main__':
                                                 col_vals_dict['segmentsLoudnessMaxTime'],
                                                 col_vals_dict['segmentsLoudnessStart'],
                                                 col_vals_dict['sectionStarts'],
-                                                int(col_vals_dict['sectionCount']),
                                                 col_vals_dict['sectionsConfidence'],
                                                 col_vals_dict['beatsStart'],
-                                                int(col_vals_dict['beatsCount']),
                                                 col_vals_dict['beatsConfidence'],
                                                 col_vals_dict['barsStart'],
-                                                int(col_vals_dict['barsCount']),
                                                 col_vals_dict['barsConfidence'],
                                                 col_vals_dict['tatumsStart'],
-                                                int(col_vals_dict['tatumsCount']),
-                                                col_vals_dict['tatumsConfidence'],
+                                                col_vals_dict['tatumsConfidence']
                                             ))
                                         )
                                     except Exception as err:
